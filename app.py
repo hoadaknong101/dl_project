@@ -1,7 +1,7 @@
 import torch
 import pickle
 from model import LSTM
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from preprocess import clean_text, tokenize_vietnamese, text_to_sequence
 from config import (EMBEDDING_DIM, 
                     HIDDEN_DIM,
@@ -12,7 +12,8 @@ from config import (EMBEDDING_DIM,
                     MAX_SEQ_LEN,
                     MODEL_PATH,
                     VOCAB_PATH,
-                    LABEL_INV_MAP)
+                    LABEL_INV_MAP,
+                    SENTIMENT_MAP)
 
 print("Đang tải từ điển (vocab)...")
 with open(VOCAB_PATH, 'rb') as f:
@@ -68,31 +69,45 @@ def predict_sentiment(text):
     pred_idx = torch.argmax(predictions, dim=1).item()
     pred_label = LABEL_INV_MAP[pred_idx]
     
-    return pred_label
+    sentiment_info = SENTIMENT_MAP[pred_label]
+    score = torch.softmax(predictions, dim=1)[0][pred_idx].item()
+    
+    return {
+        'language': "Tiếng Việt",
+        'sentiment': sentiment_info["label"],
+        'label': sentiment_info["label"],
+        'score': round(score * 100, 2),
+        'emoji': sentiment_info["emoji"],
+        'color': sentiment_info["color"]
+    }
 
 app = Flask(__name__)
 
 @app.route('/')
-def home():
-    return "API phân loại cảm xúc văn bản tiếng Việt đã sẵn sàng."
+def index():
+    """
+    Render trang chủ của ứng dụng.
+    """
+    return render_template('index.html')
 
-@app.route('/predict', methods=['POST'])
+@app.route('/analyze', methods=['POST'])
 def handle_predict():
-    if not request.json or 'comment' not in request.json:
-        return jsonify({'error': 'Dữ liệu không hợp lệ. Cần gửi JSON có key là "comment".'}), 400
-        
+    """
+    Endpoint API nhận văn bản và trả về kết quả phân tích tình cảm.
+    """
     try:
-        text = request.json['comment']
+        data = request.get_json()
+        text = data.get('text', '')
+
+        if not text.strip():
+            return jsonify({'error': 'Vui lòng nhập văn bản để phân tích.'}), 400
         
         prediction = predict_sentiment(text)
-        
-        return jsonify({
-            'comment': text,
-            'prediction': prediction
-        })
+        print(prediction)
+        return jsonify(prediction)
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=5000, debug=True)

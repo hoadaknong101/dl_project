@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trình Phân Tích Tình Cảm Đa Ngôn Ngữ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{url_for('static', filename='css/index.css')}}"/>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen py-12">
+    <div class="container mx-auto p-4 max-w-3xl">
+        <div class="bg-white rounded-2xl shadow-lg p-6 md:p-10">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Phân Tích Tình Cảm</h1>
+                <p class="text-gray-500 mt-2">Phân tích cảm xúc từ văn bản hoặc các bình luận của bài đăng bài đăng trên mạng Reddit.</p>
+            </div>
+
+            <div class="mb-6 border-b border-gray-200">
+                <nav class="flex space-x-0 sm:space-x-0" aria-label="Tabs">
+                    <button id="tab-text" class="px-3 py-2 font-semibold text-sm rounded-md text-white bg-indigo-600 transition-colors">Văn bản</button>
+                    <button id="tab-social" class="px-3 py-2 font-semibold text-sm rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors">Reddit</button>
+                </nav>
+            </div>
+            <div id="text-analysis-section">
+                <form id="sentiment-form">
+                    <textarea id="text-input" rows="8" class="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200" placeholder="Ví dụ: 'Bộ phim này thật tuyệt vời!' hoặc 'This movie was fantastic!'"></textarea>
+                    <button type="submit" id="analyze-btn" class="mt-4 w-full bg-indigo-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-200 flex items-center justify-center relative">
+                        <svg id="analyze-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        <svg id="spinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span id="btn-text">Phân tích Văn bản</span>
+                        <span class="absolute right-4 text-xs font-normal opacity-60 hidden sm:block">Ctrl + Enter</span>
+                    </button>
+                </form>
+            </div>
+
+            <div id="social-analysis-section" class="hidden">
+                <form id="social-form">
+                    <input type="url" id="social-url-input" class="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Dán link bài viết từ Reddit, X (Twitter)...">
+                    <button type="submit" id="analyze-social-btn" class="mt-4 w-full bg-indigo-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-200 flex items-center justify-center relative">
+                        <svg id="analyze-social-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                        <svg id="spinner-social" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span id="social-btn-text">Phân tích Link</span>
+                        <span class="absolute right-4 text-xs font-normal opacity-60 hidden sm:block">Enter</span>
+                    </button>
+                </form>
+            </div>
+            <div id="result-container" class="mt-8 hidden">
+                <div id="result-card" class="p-6 rounded-lg border-2 transition-all duration-300">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                         <div class="text-6xl text-center md:text-left mb-4 md:mb-0" id="result-emoji"></div>
+                         <div class="flex-grow text-center md:text-left md:ml-6">
+                             <p class="text-sm font-medium text-gray-500">KẾT QUẢ PHÂN TÍCH</p>
+                             <p class="text-2xl font-bold" id="result-sentiment"></p>
+                             <p class="text-sm text-gray-600" id="result-language"></p>
+                         </div>
+                         <div class="w-full md:w-auto mt-4 md:mt-0 text-center">
+                             <p class="text-sm font-medium text-gray-500 mb-1">ĐỘ TIN CẬY</p>
+                             <div class="relative w-24 h-24 mx-auto">
+                                 <svg class="w-full h-full" viewBox="0 0 36 36">
+                                     <path class="text-gray-200" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3" stroke="currentColor" />
+                                     <path id="score-circle" class="text-indigo-600" stroke-width="3" stroke-dasharray="0, 100" stroke-linecap="round" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" stroke="currentColor" />
+                                 </svg>
+                                 <div class="absolute inset-0 flex items-center justify-center"><span id="result-score" class="text-l font-bold text-gray-800"></span></div>
+                             </div>
+                         </div>
+                         <div id="emotions-container" class="mt-6">
+                            <h3 class="font-semibold text-gray-700 mb-3">Các sắc thái cảm xúc nổi bật</h3>
+                            <div id="emotions-list" class="flex flex-wrap gap-2"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="social-result-container" class="mt-8 hidden fade-in">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Kết Quả Phân Tích Bình Luận</h3>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center mb-6">
+                        <div>
+                            <p class="text-3xl font-bold text-green-500" id="positive-percent">0%</p>
+                            <p class="text-sm text-gray-500 font-medium">Tích cực</p>
+                        </div>
+                        <div>
+                            <p class="text-3xl font-bold text-red-500" id="negative-percent">0%</p>
+                            <p class="text-sm text-gray-500 font-medium">Tiêu cực</p>
+                        </div>
+                        <div>
+                            <p class="text-3xl font-bold text-gray-600" id="neutral-percent">0%</p>
+                            <p class="text-sm text-gray-500 font-medium">Trung tính</p>
+                        </div>
+                    </div>
+                    <div class="w-full max-w-xs mx-auto mb-4">
+                        <canvas id="sentimentChart"></canvas>
+                    </div>
+                    <p class="text-center text-sm text-gray-600">Dựa trên <strong id="total-comments">0</strong> bình luận được phân tích.</p>
+                </div>
+                <div id="comment-details-section" class="mt-6">
+                    <h4 class="text-lg font-semibold text-gray-700 mb-3">Chi tiết một số bình luận</h4>
+                    <hr class="shadow-lg">
+                    <div id="comment-details-list" class="space-y-3 max-h-[600px] overflow-y-auto pr-2 mt-2"></div>
+                    <hr class="shadow-lg">
+                </div>
+            </div>
+            <div id="error-container" class="mt-4 hidden">
+                 <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative" role="alert">
+                     <strong class="font-bold">Lỗi!</strong>
+                     <span class="block sm:inline" id="error-message"></span>
+                 </div>
+            </div>
+        </div>
+        <footer class="text-center mt-6 text-sm text-gray-500">
+            <p>&copy; 2025 - Thực hiện bởi nhóm 3</p>
+        </footer>
+    </div>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

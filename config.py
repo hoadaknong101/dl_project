@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 
 # --- Cấu hình mô hình LSTM ---
-EMBEDDING_DIM = 100
+EMBEDDING_DIM = 300
 """Kích thước của vector embedding cho mỗi từ."""
 
 HIDDEN_DIM = 128
@@ -17,14 +17,14 @@ N_LAYERS = 2
 BIDIRECTIONAL = True
 """Cờ xác định có sử dụng LSTM hai chiều (bidirectional) hay không."""
 
-DROPOUT = 0.5
+DROPOUT = 0.3
 """Tỷ lệ dropout được áp dụng giữa các lớp LSTM để tránh overfitting."""
 
 MAX_SEQ_LEN = 100
 """Độ dài tối đa của một câu. Các câu dài hơn sẽ bị cắt ngắn."""
 
 # --- Cấu hình quá trình huấn luyện ---
-BATCH_SIZE = 512
+BATCH_SIZE = 2048
 """Số lượng mẫu dữ liệu được xử lý trong một lần lặp huấn luyện."""
 
 N_EPOCHS = 100
@@ -76,3 +76,10 @@ LOG_FILE_PATH = os.path.join(RUN_CHECKPOINT_PATH, "training_log.txt")
 # Đảm bảo thư mục lưu trữ tồn tại
 os.makedirs(SAVE_DIR, exist_ok=True)
 os.makedirs(RUN_CHECKPOINT_PATH, exist_ok=True)
+
+SENTIMENT_MAP = {
+    "POS": {"label": "Tích cực", "emoji": "😊", "color": "bg-green-100 text-green-800 border-green-400"},
+    "NEG": {"label": "Tiêu cực", "emoji": "😠", "color": "bg-red-100 text-red-800 border-red-400"},
+    "NEU": {"label": "Trung tính", "emoji": "😐", "color": "bg-blue-100 text-blue-800 border-blue-400"},
+}
+"""Bản đồ ánh xạ nhãn cảm xúc sang nhãn hiển thị, biểu tượng cảm xúc và màu sắc tương ứng."""

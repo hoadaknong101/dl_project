@@ -6,3 +6,4 @@ seaborn
 flask
 tqdm
 underthesea
+fasttext

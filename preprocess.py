@@ -1,11 +1,15 @@
 import re
 import torch
+import random
 import pandas as pd
 from collections import Counter
 from underthesea import word_tokenize
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset, DataLoader
 from config import LABEL_MAP
+
+random.seed(2025)
+torch.manual_seed(2025)
 
 def clean_text(text):
     """
@@ -19,8 +23,8 @@ def clean_text(text):
         return ""
     
     text = text.lower()  # Chuyển về chữ thường
-    text = re.sub(r'http\S+', '', text)  # Xóa URL
-    text = re.sub(r'[^\w\s]', '', text)  # Xóa dấu câu và ký tự đặc biệt
+    text = re.sub(r'http\S+', '', text).strip()  # Xóa URL
+    text = re.sub(r'[^\w\sáàạảãăắằặẳẵâấầậẩẫéèẹẻẽêếềệểễíìịỉĩóòọỏõôốồộổỗơớờợởỡúùụủũưứừựửữýỳỵỷỹđ]', '', text)  # Xóa dấu câu và ký tự đặc biệt
     text = re.sub(r'\d+', '', text)  # Xóa số
     text = text.strip()  # Xóa khoảng trắng thừa
     
@@ -34,6 +38,9 @@ def tokenize_vietnamese(text):
     Returns:
         list: Danh sách các token
     """
+    if not text.strip():
+        return []
+
     return word_tokenize(text)
 
 def build_vocab(tokenized_texts, max_vocab_size=10000, min_freq=2):
