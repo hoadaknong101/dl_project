@@ -1,88 +1,138 @@
+import os
 import torch
+import pickle
+from tqdm import tqdm
 import torch.nn as nn
-import torch.optim as optim
 from model import LSTM
-import json
-from utils import process_data
+import torch.optim as optim
+from metrics import evaluate_model
+from preprocess import prepare_vocab, get_dataloaders, LABEL_MAP
+from config import (EMBEDDING_DIM, 
+                    HIDDEN_DIM,
+                    OUTPUT_DIM, 
+                    N_LAYERS,
+                    BIDIRECTIONAL,
+                    DROPOUT, 
+                    MAX_SEQ_LEN,
+                    MODEL_SAVE_PATH,
+                    VOCAB_SAVE_PATH,
+                    DATA_FILE,
+                    MAX_VOCAB_SIZE,
+                    MIN_FREQ,
+                    BATCH_SIZE,
+                    LEARNING_RATE,
+                    N_EPOCHS)
 
-# Hyperparameters
-EMBEDDING_DIM = 100
-HIDDEN_DIM = 128
-LAYER_DIM = 2
-LEARNING_RATE = 0.001
-NUM_EPOCHS = 10
-BATCH_SIZE = 64
-SEQUENCE_LENGTH = 100
-DATA_PATH = 'datasets/data.csv'
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f"Thiết bị sử dụng: {device}")
 
-def train():
-    # 1. Load and process data
-    train_loader, val_loader, vocab_size, output_dim, vocab_to_int = process_data(
-        DATA_PATH,
-        batch_size=BATCH_SIZE,
-        sequence_length=SEQUENCE_LENGTH
-    )
+print("Bắt đầu chuẩn bị từ điển...")
 
-    # 2. Instantiate the model
-    OUTPUT_DIM = output_dim
-    model = LSTM(vocab_size, EMBEDDING_DIM, HIDDEN_DIM, LAYER_DIM, OUTPUT_DIM)
+if os.path.exists(VOCAB_SAVE_PATH):
+    print("Đang tải từ điển đã lưu...")
+    with open(VOCAB_SAVE_PATH, 'rb') as f:
+        vocab = pickle.load(f)
+else:
+    print("Tạo từ điển mới...")
+    vocab = prepare_vocab(DATA_FILE, MAX_VOCAB_SIZE, MIN_FREQ)
+    with open(VOCAB_SAVE_PATH, 'wb') as f:
+        pickle.dump(vocab, f)
 
-    # 3. Define loss and optimizer
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+VOCAB_SIZE = len(vocab)
+PAD_IDX = vocab['<pad>']
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
+print(f"Kích thước từ điển: {VOCAB_SIZE}")
 
-    print(f"Training on {device}")
+print("Chuẩn bị DataLoaders...")
+train_loader, test_loader = get_dataloaders(
+    DATA_FILE, 
+    vocab, 
+    BATCH_SIZE, 
+    MAX_SEQ_LEN,
+    test_size=0.2
+)
+print("DataLoaders đã sẵn sàng.")
 
-    # 4. Training loop
-    for epoch in range(NUM_EPOCHS):
-        model.train()
-        running_loss = 0.0
-        for i, (inputs, labels) in enumerate(train_loader):
-            inputs, labels = inputs.to(device), labels.to(device)
+model = LSTM(
+    VOCAB_SIZE,
+    EMBEDDING_DIM,
+    HIDDEN_DIM,
+    OUTPUT_DIM,
+    N_LAYERS,
+    BIDIRECTIONAL,
+    DROPOUT,
+    PAD_IDX
+)
 
-            # Zero the parameter gradients
-            optimizer.zero_grad()
+model = model.to(device)
 
-            # Forward pass
-            outputs, _, _ = model(inputs)
-            loss = criterion(outputs, labels)
+optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
-            # Backward pass and optimization
-            loss.backward()
-            optimizer.step()
+criterion = nn.CrossEntropyLoss()
+criterion = criterion.to(device)
 
-            running_loss += loss.item()
+def train_epoch(epoch, model, iterator, optimizer, criterion, device):
+    """
+    Hàm huấn luyện cho 1 epoch
+    Args:
+        model: Mô hình cần huấn luyện
+        iterator: DataLoader cho tập huấn luyện
+        optimizer: Bộ tối ưu
+        criterion: Hàm mất mát
+        device: Thiết bị (CPU/GPU)
+    Returns:
+        float: Loss trung bình trên epoch
+    """
+    epoch_loss = 0
+    model.train()
+    
+    pbar = tqdm(iterator, desc=f"[Epoch {epoch+1:02}/{N_EPOCHS}]", leave=True)
+    
+    for (texts, labels, lengths) in pbar:
+        texts = texts.to(device)
+        labels = labels.to(device)
+        
+        # 1. Reset gradients
+        optimizer.zero_grad()
+        
+        # 2. Forward pass
+        # predictions shape: (batch_size, output_dim)
+        predictions = model(texts, lengths)
+        
+        # 3. Tính loss
+        loss = criterion(predictions, labels)
+        
+        # 4. Backward pass (tính gradient)
+        loss.backward()
+        
+        # 5. Cập nhật trọng số
+        optimizer.step()
+        
+        epoch_loss += loss.item()
+        
+        pbar.set_postfix({'loss': loss.item()})
+        
+    return epoch_loss / len(iterator)
 
-            if (i + 1) % 100 == 0:
-                print(f'Epoch [{epoch+1}/{NUM_EPOCHS}], Step [{i+1}/{len(train_loader)}], Loss: {loss.item():.4f}')
+print("Bắt đầu quá trình huấn luyện...")
+best_test_loss = float('inf')
 
-        # 5. Validation loop
-        model.eval()
-        val_loss = 0.0
-        correct = 0
-        total = 0
-        with torch.no_grad():
-            for inputs, labels in val_loader:
-                inputs, labels = inputs.to(device), labels.to(device)
-                outputs, _, _ = model(inputs)
-                loss = criterion(outputs, labels)
-                val_loss += loss.item()
+for epoch in range(N_EPOCHS):
+    train_loss = train_epoch(epoch, model, train_loader, optimizer, criterion, device)
+    
+    test_loss, _, _ = evaluate_model(model, test_loader, criterion, device)
 
-                _, predicted = torch.max(outputs.data, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
+    if test_loss < best_test_loss:
+        best_test_loss = test_loss
+        torch.save(model.state_dict(), MODEL_SAVE_PATH)
+    
+    print(f"Train Loss: {train_loss:.4f}")
+    print(f"Test Loss:  {test_loss:.4f}")
+    print("-"*30)
 
-        print(f'Epoch [{epoch+1}/{NUM_EPOCHS}], Train Loss: {running_loss / len(train_loader):.4f}, Val Loss: {val_loss / len(val_loader):.4f}, Val Accuracy: {100 * correct / total:.2f}%')
+print("Huấn luyện hoàn tất.")
 
-    # 6. Save the model and vocabulary
-    torch.save(model.state_dict(), 'lstm_model.pth')
-    with open('vocab_to_int.json', 'w') as f:
-        json.dump(vocab_to_int, f)
-    print("Finished Training and model saved to lstm_model.pth")
-    print("Vocabulary saved to vocab_to_int.json")
+print("Đang tải mô hình tốt nhất để đánh giá cuối cùng...")
+model.load_state_dict(torch.load(MODEL_SAVE_PATH))
 
-if __name__ == '__main__':
-    train()
+evaluate_model(model, test_loader, criterion, device)
