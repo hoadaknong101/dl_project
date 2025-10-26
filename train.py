@@ -6,7 +6,7 @@ import torch.nn as nn
 from model import LSTM
 import torch.optim as optim
 from metrics import evaluate_model
-from preprocess import prepare_vocab, get_dataloaders, LABEL_MAP
+from preprocess import prepare_vocab, get_dataloaders
 from config import (EMBEDDING_DIM, 
                     HIDDEN_DIM,
                     OUTPUT_DIM, 
@@ -21,7 +21,8 @@ from config import (EMBEDDING_DIM,
                     MIN_FREQ,
                     BATCH_SIZE,
                     LEARNING_RATE,
-                    N_EPOCHS)
+                    N_EPOCHS,
+                    LOG_FILE_PATH)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Thiết bị sử dụng: {device}")
@@ -118,6 +119,9 @@ print("Bắt đầu quá trình huấn luyện...")
 best_test_loss = float('inf')
 
 for epoch in range(N_EPOCHS):
+    with open(LOG_FILE_PATH, "a") as log_file:
+        log_file.write(f"[Epoch {epoch+1:02}/{N_EPOCHS}]: ")
+
     train_loss = train_epoch(epoch, model, train_loader, optimizer, criterion, device)
     
     test_loss, _, _ = evaluate_model(model, test_loader, criterion, device)
@@ -129,6 +133,9 @@ for epoch in range(N_EPOCHS):
     print(f"Train Loss: {train_loss:.4f}")
     print(f"Test Loss:  {test_loss:.4f}")
     print("-"*30)
+    
+    with open(LOG_FILE_PATH, "a") as log_file:
+        log_file.write(f", Train Loss: {train_loss:.4f}, Test Loss: {test_loss:.4f}\n")
 
 print("Huấn luyện hoàn tất.")
 

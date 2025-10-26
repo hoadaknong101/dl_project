@@ -8,6 +8,9 @@
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
 
+runs/
+saved_model/
+
 # IPython
 profile_default/
 ipython_config.py

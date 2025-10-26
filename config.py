@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 # --- Cấu hình mô hình LSTM ---
 EMBEDDING_DIM = 100
@@ -65,5 +66,13 @@ LABEL_MAP = {'POS': 0, 'NEG': 1, 'NEU': 2}
 LABEL_INV_MAP = {v: k for k, v in LABEL_MAP.items()}
 """Ánh xạ ngược từ nhãn dạng số về dạng chuỗi, hữu ích cho việc diễn giải kết quả."""
 
+# --- Cấu hình checkpoint ---
+RUN_CHECKPOINT_PATH = os.path.join("runs", datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))
+"""Thư mục gốc để lưu các checkpoint của các lần chạy (runs)."""
+
+LOG_FILE_PATH = os.path.join(RUN_CHECKPOINT_PATH, "training_log.txt")
+"""Đường dẫn đến file log ghi lại quá trình huấn luyện."""
+
 # Đảm bảo thư mục lưu trữ tồn tại
 os.makedirs(SAVE_DIR, exist_ok=True)
+os.makedirs(RUN_CHECKPOINT_PATH, exist_ok=True)

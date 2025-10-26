@@ -2,8 +2,8 @@ import torch
 from tqdm import tqdm
 import seaborn as sns
 import matplotlib.pyplot as plt
+from config import LABEL_INV_MAP, LOG_FILE_PATH
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
-from config import LABEL_INV_MAP
 
 def calculate_metrics(y_true, y_pred, target_names):
     """
@@ -19,10 +19,30 @@ def calculate_metrics(y_true, y_pred, target_names):
         y_true, 
         y_pred, 
         target_names=target_names, 
-        zero_division=0
+        zero_division=0,
+        output_dict=True
     )
+
+    macro = report["macro avg"]
+    weighted = report["weighted avg"]
+    acc = report["accuracy"]
+
+    # Ghép lại thành một chuỗi
+    line = (
+        f"accuracy: {acc:.4f}, "
+        f"macro_precision: {macro['precision']:.4f}, "
+        f"macro_recall: {macro['recall']:.4f}, "
+        f"macro_f1: {macro['f1-score']:.4f}, "
+        f"weighted_precision: {weighted['precision']:.4f}, "
+        f"weighted_recall: {weighted['recall']:.4f}, "
+        f"weighted_f1: {weighted['f1-score']:.4f}"
+    )
+
     print(report)
     print(f"Accuracy: {accuracy:.4f}")
+    
+    with open(LOG_FILE_PATH, "a") as log_file:
+        log_file.write(line)
 
 def plot_confusion_matrix(y_true, y_pred, class_names):
     """
