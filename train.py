@@ -1,6 +1,8 @@
 import os
 import torch
+import random
 import pickle
+import numpy as np
 from tqdm import tqdm
 import torch.nn as nn
 from model import LSTM
@@ -23,6 +25,15 @@ from config import (EMBEDDING_DIM,
                     LEARNING_RATE,
                     N_EPOCHS,
                     LOG_FILE_PATH)
+
+def set_seed(seed=42):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.backends.cudnn.deterministic = True
+
+set_seed(42)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Thiết bị sử dụng: {device}")
@@ -89,7 +100,7 @@ def train_epoch(epoch, model, iterator, optimizer, criterion, device):
     
     pbar = tqdm(iterator, desc=f"[Epoch {epoch+1:02}/{N_EPOCHS}]", leave=True)
     
-    for (texts, labels, lengths) in pbar:
+    for texts, lengths, labels in pbar:
         texts = texts.to(device)
         labels = labels.to(device)
         
@@ -98,7 +109,7 @@ def train_epoch(epoch, model, iterator, optimizer, criterion, device):
         
         # 2. Forward pass
         # predictions shape: (batch_size, output_dim)
-        predictions = model(texts, lengths)
+        predictions = model(texts, lengths.to('cpu'))
         
         # 3. Tính loss
         loss = criterion(predictions, labels)

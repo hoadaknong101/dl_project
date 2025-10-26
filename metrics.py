@@ -93,12 +93,12 @@ def evaluate_model(model, iterator, criterion, device):
     with torch.no_grad():
         pbar = tqdm(iterator, desc="[Evaluating]", leave=False)
 
-        for texts, labels, lengths in pbar:
+        for texts, lengths, labels in pbar:
             texts = texts.to(device)
             labels = labels.to(device)
             
             # Forward pass
-            predictions = model(texts, lengths)
+            predictions = model(texts, lengths.to('cpu'))
             
             # Tính loss
             loss = criterion(predictions, labels)

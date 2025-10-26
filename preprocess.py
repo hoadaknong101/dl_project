@@ -1,15 +1,11 @@
 import re
 import torch
-import random
 import pandas as pd
 from collections import Counter
 from underthesea import word_tokenize
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset, DataLoader
 from config import LABEL_MAP
-
-random.seed(2025)
-torch.manual_seed(2025)
 
 def clean_text(text):
     """
@@ -38,9 +34,6 @@ def tokenize_vietnamese(text):
     Returns:
         list: Danh sách các token
     """
-    if not text.strip():
-        return []
-
     return word_tokenize(text)
 
 def build_vocab(tokenized_texts, max_vocab_size=10000, min_freq=2):
@@ -86,6 +79,7 @@ class VietnameseTextDataset(Dataset):
         self.labels = labels
         self.vocab = vocab
         self.max_seq_len = max_seq_len
+        self.unk_idx = vocab.get('<unk>', 1)
 
     def __len__(self):
         return len(self.texts)
@@ -93,43 +87,50 @@ class VietnameseTextDataset(Dataset):
     def __getitem__(self, idx):
         text = self.texts[idx]
         label = self.labels[idx]
-        
-        # Tokenize và chuyển sang sequence
-        tokens = tokenize_vietnamese(clean_text(text))
+
+        # 1️⃣ Làm sạch & token hóa
+        cleaned = clean_text(text)
+        tokens = tokenize_vietnamese(cleaned)
+
+        # 2️⃣ Nếu sau khi làm sạch mà trống, thêm token giả
+        if not tokens:
+            tokens = ['<unk>']
+
+        # 3️⃣ Chuyển token thành id
         sequence = text_to_sequence(tokens, self.vocab)
-        
-        # Cắt bớt nếu dài hơn max_seq_len
+
+        # 4️⃣ Nếu sequence vẫn rỗng (edge case)
+        if len(sequence) == 0:
+            sequence = [self.unk_idx]
+
+        # 5️⃣ Cắt bớt nếu quá dài
         if len(sequence) > self.max_seq_len:
             sequence = sequence[:self.max_seq_len]
-            
+
         return torch.tensor(sequence, dtype=torch.long), torch.tensor(label, dtype=torch.long)
+
 
 def create_collate_fn(pad_idx):
     def collate_fn(batch):
-        """
-        Xử lý padding cho từng batch.
-        Nó sẽ pad các sequence trong batch về độ dài của sequence dài nhất TRONG BATCH ĐÓ.
-        Args:
-            batch (list of tuples): Mỗi tuple là (sequence_tensor, label_tensor)
-        Returns:
-            padded_sequences (Tensor): Tensor các sequence đã được pad
-        """
-        sequences, labels = zip(*batch)
+        texts, labels = zip(*batch)
+        lengths = torch.tensor([len(x) for x in texts])
+
+        mask = lengths > 0
+        texts = [t for t, m in zip(texts, mask) if m]
+        labels = [l for l, m in zip(labels, mask) if m]
+        lengths = lengths[mask]
+
+        # Nếu batch trống, thêm 1 mẫu giả để tránh crash
+        if len(texts) == 0:
+            texts = [torch.tensor([pad_idx])]
+            lengths = torch.tensor([1])
+            labels = torch.tensor([0])
         
-        # Lấy độ dài của từng sequence
-        lengths = torch.tensor([len(seq) for seq in sequences], dtype=torch.long)
+        texts = pad_sequence(texts, batch_first=True, padding_value=pad_idx)
+        labels = torch.tensor(labels)
         
-        # Pad các sequence
-        # batch_first=True -> output shape (batch_size, max_seq_len_in_batch)
-        padded_sequences = pad_sequence(sequences, batch_first=True, padding_value=pad_idx)
-        
-        # Sắp xếp batch theo độ dài (cần thiết cho pack_padded_sequence nếu dùng)
-        # Ở đây chúng ta không dùng pack_padded_sequence nhưng vẫn trả về lengths
-        # để tiện cho việc theo dõi hoặc tối ưu sau này.
-        labels = torch.stack(labels)
-        
-        return padded_sequences, labels, lengths
-    
+        return texts, lengths, labels
+
     return collate_fn
 
 def get_dataloaders(file_path, vocab, batch_size, max_seq_len, test_size=0.2):
@@ -155,7 +156,7 @@ def get_dataloaders(file_path, vocab, batch_size, max_seq_len, test_size=0.2):
     df = df.dropna(subset=['label_id'])
     df['label_id'] = df['label_id'].astype(int)
     
-    # Chia train/test (ví dụ, 80% train, 20% test/val)
+    # Chia train/test
     from sklearn.model_selection import train_test_split
     df_train, df_test = train_test_split(df, test_size=test_size, random_state=42, stratify=df['label_id'])
 
@@ -195,7 +196,14 @@ def prepare_vocab(file_path, max_vocab_size=10000, min_freq=2):
     df = df.dropna(subset=['comment'])
     
     print("Đang token hóa và xây dựng từ điển...")
-    tokenized_texts = [tokenize_vietnamese(clean_text(text)) for text in df['comment'].tolist()]
+
+    tokenized_texts = []
+    for text in df['comment'].tolist():
+        cleaned = clean_text(text)
+        tokens = tokenize_vietnamese(cleaned)
+        if len(tokens) > 0: 
+            tokenized_texts.append(tokens)
+
     vocab = build_vocab(tokenized_texts, max_vocab_size, min_freq)
     print(f"Xây dựng từ điển hoàn tất với {len(vocab)} từ.")
 

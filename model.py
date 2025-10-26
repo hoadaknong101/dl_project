@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 class LSTM(nn.Module):
     def __init__(self, vocab_size, embedding_dim, hidden_dim, output_dim, n_layers, 
@@ -19,7 +20,6 @@ class LSTM(nn.Module):
         super().__init__()
         
         # 1. Lớp Embedding
-        # padding_idx=pad_idx: báo cho lớp Embedding bỏ qua token padding khi tính toán
         self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx=pad_idx)
         
         # 2. Lớp LSTM
@@ -32,11 +32,16 @@ class LSTM(nn.Module):
             dropout=dropout if n_layers > 1 else 0
         )
         
-        # 3. Lớp Linear (Fully Connected)
-        self.fc = nn.Linear(hidden_dim * 2 if bidirectional else hidden_dim, output_dim)
-        
-        # 4. Lớp Dropout
+        # 3. Lớp MLP (Linear + ReLU + Dropout + Linear)
+        self.fc = nn.Sequential(
+            nn.Linear(hidden_dim * (2 if bidirectional else 1), hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, output_dim)
+        )
+
         self.dropout = nn.Dropout(dropout)
+
         
     def forward(self, text, lengths):
         """
@@ -48,24 +53,11 @@ class LSTM(nn.Module):
         Returns:
             Tensor: (batch_size, output_dim) - Logits
         """
-        
-        # 1. Embedding
         embedded = self.embedding(text)
-        
-        # 2. LSTM
-        output, (hidden, cell) = self.lstm(embedded)
-        
-        # 3. Lấy hidden state cuối cùng
+        packed_embedded = pack_padded_sequence(embedded, lengths.cpu(), batch_first=True, enforce_sorted=False)
+        _, (hidden, _) = self.lstm(packed_embedded)
         if self.lstm.bidirectional:
-            # Nối hidden state của chiều thuận (lớp cuối) và chiều ngược (lớp cuối)
-            # hidden[-2,:,:] là forward của lớp cuối
-            # hidden[-1,:,:] là backward của lớp cuối
-            hidden = torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim=1)
+            hidden = torch.cat((hidden[-2], hidden[-1]), dim=1)
         else:
-            hidden = hidden[-1,:,:]
-                    
-        # 4. Qua lớp Dropout và Linear
-        dropped_hidden = self.dropout(hidden)
-        prediction = self.fc(dropped_hidden)
-                
-        return prediction
+            hidden = hidden[-1]
+        return self.fc(hidden)

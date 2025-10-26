@@ -14,7 +14,7 @@ OUTPUT_DIM = 3
 N_LAYERS = 2
 """Số lượng lớp LSTM xếp chồng lên nhau."""
 
-BIDIRECTIONAL = True
+BIDIRECTIONAL = False
 """Cờ xác định có sử dụng LSTM hai chiều (bidirectional) hay không."""
 
 DROPOUT = 0.3
