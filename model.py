@@ -39,9 +39,6 @@ class LSTM(nn.Module):
             nn.Dropout(dropout),
             nn.Linear(hidden_dim, output_dim)
         )
-
-        self.dropout = nn.Dropout(dropout)
-
         
     def forward(self, text, lengths):
         """

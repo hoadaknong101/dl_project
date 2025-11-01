@@ -132,7 +132,8 @@ best_test_loss = float('inf')
 for epoch in range(N_EPOCHS):
     with open(LOG_FILE_PATH, "a") as log_file:
         log_file.write(f"[Epoch {epoch+1:02}/{N_EPOCHS}]: ")
-
+    
+    # epoch, model, iterator, optimizer, criterion, device
     train_loss = train_epoch(epoch, model, train_loader, optimizer, criterion, device)
     
     test_loss, _, _ = evaluate_model(model, test_loader, criterion, device)

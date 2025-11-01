@@ -11,7 +11,7 @@ HIDDEN_DIM = 128
 OUTPUT_DIM = 3
 """Số lượng lớp đầu ra (tương ứng với 3 loại cảm xúc: POS, NEG, NEU)."""
 
-N_LAYERS = 2
+N_LAYERS = 3
 """Số lượng lớp LSTM xếp chồng lên nhau."""
 
 BIDIRECTIONAL = False
