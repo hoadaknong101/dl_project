@@ -17,7 +17,7 @@ N_LAYERS = 2
 BIDIRECTIONAL = False
 """Cờ xác định có sử dụng LSTM hai chiều (bidirectional) hay không."""
 
-DROPOUT = 0.3
+DROPOUT = 0.5
 """Tỷ lệ dropout được áp dụng giữa các lớp LSTM để tránh overfitting."""
 
 MAX_SEQ_LEN = 100
@@ -27,7 +27,7 @@ MAX_SEQ_LEN = 100
 BATCH_SIZE = 2048
 """Số lượng mẫu dữ liệu được xử lý trong một lần lặp huấn luyện."""
 
-N_EPOCHS = 100
+N_EPOCHS = 50
 """Tổng số lần lặp qua toàn bộ tập dữ liệu huấn luyện."""
 
 LEARNING_RATE = 1e-3
