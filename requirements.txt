@@ -6,4 +6,5 @@ seaborn
 flask
 tqdm
 underthesea
-fasttext
+praw
+python-dotenv

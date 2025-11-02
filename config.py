@@ -83,3 +83,12 @@ SENTIMENT_MAP = {
     "NEU": {"label": "Trung tính", "emoji": "😐", "color": "bg-blue-100 text-blue-800 border-blue-400"},
 }
 """Bản đồ ánh xạ nhãn cảm xúc sang nhãn hiển thị, biểu tượng cảm xúc và màu sắc tương ứng."""
+
+COMMENT_LIMIT = 100
+"""Giới hạn số lượng bình luận được lấy từ Reddit cho mỗi bài đăng."""
+
+LOGGING_INFO_FORMAT = '[%(levelname)s] [%(name)s] %(asctime)s : %(message)s'
+"""Định dạng log"""
+
+LOGGING_LEVEL = 'INFO'
+"""Log level"""

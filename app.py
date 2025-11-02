@@ -1,6 +1,8 @@
 import torch
 import pickle
+import logging
 from model import LSTM
+from crawl_data_reddit import reddit
 from flask import Flask, request, jsonify, render_template
 from preprocess import clean_text, tokenize_vietnamese, text_to_sequence
 from config import (EMBEDDING_DIM, 
@@ -13,12 +15,18 @@ from config import (EMBEDDING_DIM,
                     MODEL_PATH,
                     VOCAB_PATH,
                     LABEL_INV_MAP,
-                    SENTIMENT_MAP)
+                    SENTIMENT_MAP,
+                    COMMENT_LIMIT,
+                    LOGGING_INFO_FORMAT,
+                    LOGGING_LEVEL)
 
-print("Đang tải từ điển (vocab)...")
+logging.basicConfig(level=LOGGING_LEVEL, format=LOGGING_INFO_FORMAT)
+LOG = logging.getLogger("Web Application")
+
+LOG.info("Đang tải từ điển (vocab)...")
 with open(VOCAB_PATH, 'rb') as f:
     vocab = pickle.load(f)
-print("Tải từ điển hoàn tất.")
+LOG.info("Tải từ điển hoàn tất.")
 
 VOCAB_SIZE = len(vocab)
 PAD_IDX = vocab['<pad>']
@@ -34,13 +42,14 @@ model = LSTM(
     PAD_IDX
 )
 
-print("Đang tải trọng số mô hình...")
+LOG.info("Đang tải trọng số mô hình...")
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
 model.to(device)
 model.eval()
-print("Mô hình đã sẵn sàng.")
+
+LOG.info("Mô hình đã sẵn sàng.")
 
 def predict_sentiment(text):
     """
@@ -103,11 +112,76 @@ def handle_predict():
             return jsonify({'error': 'Vui lòng nhập văn bản để phân tích.'}), 400
         
         prediction = predict_sentiment(text)
-        print(prediction)
+        LOG.info(prediction)
         return jsonify(prediction)
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/analyze-url', methods=['POST'])
+def analyze_social_post():
+    """
+    Phân tích tính tích cực và tiêu cực của một bài đăng trên mạng xã hội (Reddit).
+    """
+    data = request.get_json()
+    url = data.get('url')
+
+    if not url:
+        return jsonify({"error": "Vui lòng cung cấp URL."}), 400
+
+    results = []
+    try:
+        submission = reddit.submission(url=url)
+        submission.comments.replace_more(limit=0)
+        comment_count = 0
+
+        for comment in submission.comments.list():
+            if comment_count >= COMMENT_LIMIT:
+                break
+            
+            try:
+                if not comment.body or comment.body == '[deleted]' or comment.body == '[removed]':
+                    continue
+
+                sentiment = predict_sentiment(comment.body)
+
+                if 'error' in sentiment:
+                    LOG.warning(f"Bình luận không thể phân tích: {comment.body[:30]}... Lỗi: {sentiment['error']}")
+                    continue
+                
+                results.append({
+                    'author': str(comment.author),
+                    'text': comment.body,
+                    'sentiment': sentiment['label'],
+                    'score': sentiment['score']
+                })
+            except Exception as e:
+                LOG.error(f"Lỗi khi phân tích bình luận: {e}", exc_info=True)
+                continue
+            
+            comment_count += 1
+
+        if not results:
+             return jsonify({"error": "Không tìm thấy bình luận nào có thể phân tích."}), 404
+
+        positive_count = sum(1 for r in results if r['sentiment'] == 'Tích cực')
+        negative_count = sum(1 for r in results if r['sentiment'] == 'Tiêu cực')
+        neutral_count = sum(1 for r in results if r['sentiment'] == 'Trung tính')
+        total_count = len(results)
+
+        summary = {
+            "positive_percent": round((positive_count / total_count) * 100),
+            "negative_percent": round((negative_count / total_count) * 100),
+            "neutral_percent": round((neutral_count / total_count) * 100),
+            "total_comments": total_count,
+            "details": results 
+        }
+
+        return jsonify(summary)
+
+    except Exception as e:
+        LOG.error(f"Lỗi nghiêm trọng khi xử lý URL: {e}", exc_info=True)
+        return jsonify({"error": f"Không thể xử lý URL hoặc đã có lỗi xảy ra: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
