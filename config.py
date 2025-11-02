@@ -2,19 +2,19 @@ import os
 from datetime import datetime
 
 # --- Cấu hình mô hình LSTM ---
-EMBEDDING_DIM = 300
+EMBEDDING_DIM = 200
 """Kích thước của vector embedding cho mỗi từ."""
 
-HIDDEN_DIM = 128
+HIDDEN_DIM = 256
 """Kích thước của lớp ẩn trong mô hình LSTM."""
 
 OUTPUT_DIM = 3
 """Số lượng lớp đầu ra (tương ứng với 3 loại cảm xúc: POS, NEG, NEU)."""
 
-N_LAYERS = 3
+N_LAYERS = 2
 """Số lượng lớp LSTM xếp chồng lên nhau."""
 
-BIDIRECTIONAL = False
+BIDIRECTIONAL = True
 """Cờ xác định có sử dụng LSTM hai chiều (bidirectional) hay không."""
 
 DROPOUT = 0.5
@@ -27,10 +27,10 @@ MAX_SEQ_LEN = 100
 BATCH_SIZE = 2048
 """Số lượng mẫu dữ liệu được xử lý trong một lần lặp huấn luyện."""
 
-N_EPOCHS = 50
+N_EPOCHS = 100
 """Tổng số lần lặp qua toàn bộ tập dữ liệu huấn luyện."""
 
-LEARNING_RATE = 1e-3
+LEARNING_RATE = 1e-4
 """Tốc độ học của optimizer (Adam)."""
 
 # --- Cấu hình tiền xử lý dữ liệu ---

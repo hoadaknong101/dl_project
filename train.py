@@ -78,7 +78,7 @@ model = LSTM(
 
 model = model.to(device)
 
-optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-5)
 
 criterion = nn.CrossEntropyLoss()
 criterion = criterion.to(device)
