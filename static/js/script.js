@@ -204,9 +204,6 @@ function displaySocialResult(data) {
   document.getElementById(
     "negative-percent"
   ).textContent = `${data.negative_percent}%`;
-  document.getElementById(
-    "neutral-percent"
-  ).textContent = `${data.neutral_percent}%`;
   document.getElementById("total-comments").textContent = data.total_comments;
   const ctx = document.getElementById("sentimentChart").getContext("2d");
   if (sentimentChart) {
@@ -215,19 +212,11 @@ function displaySocialResult(data) {
   sentimentChart = new Chart(ctx, {
     type: "doughnut",
     data: {
-      labels: ["Tích cực", "Tiêu cực", "Trung tính"],
+      labels: ["Tích cực", "Tiêu cực"],
       datasets: [
         {
-          data: [
-            data.positive_percent,
-            data.negative_percent,
-            data.neutral_percent,
-          ],
-          backgroundColor: [
-            "rgb(34, 197, 94)",
-            "rgb(239, 68, 68)",
-            "rgb(107, 114, 128)",
-          ],
+          data: [data.positive_percent, data.negative_percent],
+          backgroundColor: ["rgb(34, 197, 94)", "rgb(239, 68, 68)"],
           hoverOffset: 4,
           borderWidth: 0,
         },
@@ -257,13 +246,9 @@ function displaySocialResult(data) {
           sentimentClass = "bg-green-100 text-green-800";
           sentimentIcon = "👍";
           break;
-        case "Tiêu cực":
+        default:
           sentimentClass = "bg-red-100 text-red-800";
           sentimentIcon = "👎";
-          break;
-        default: // Trung tính
-          sentimentClass = "bg-gray-100 text-gray-800";
-          sentimentIcon = "😐";
           break;
       }
 

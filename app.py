@@ -104,19 +104,19 @@ def handle_predict():
     """
     Endpoint API nhận văn bản và trả về kết quả phân tích tình cảm.
     """
-    try:
-        data = request.get_json()
-        text = data.get('text', '')
+    # try:
+    data = request.get_json()
+    text = data.get('text', '')
 
-        if not text.strip():
-            return jsonify({'error': 'Vui lòng nhập văn bản để phân tích.'}), 400
+    if not text.strip():
+        return jsonify({'error': 'Vui lòng nhập văn bản để phân tích.'}), 400
+    
+    prediction = predict_sentiment(text)
+    LOG.info(prediction)
+    return jsonify(prediction)
         
-        prediction = predict_sentiment(text)
-        LOG.info(prediction)
-        return jsonify(prediction)
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    # except Exception as e:
+    #     return jsonify({'error': str(e)}), 500
 
 @app.route('/analyze-url', methods=['POST'])
 def analyze_social_post():
@@ -166,13 +166,11 @@ def analyze_social_post():
 
         positive_count = sum(1 for r in results if r['sentiment'] == 'Tích cực')
         negative_count = sum(1 for r in results if r['sentiment'] == 'Tiêu cực')
-        neutral_count = sum(1 for r in results if r['sentiment'] == 'Trung tính')
         total_count = len(results)
 
         summary = {
             "positive_percent": round((positive_count / total_count) * 100),
             "negative_percent": round((negative_count / total_count) * 100),
-            "neutral_percent": round((neutral_count / total_count) * 100),
             "total_comments": total_count,
             "details": results 
         }

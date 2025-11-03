@@ -8,7 +8,7 @@ EMBEDDING_DIM = 200
 HIDDEN_DIM = 256
 """Kích thước của lớp ẩn trong mô hình LSTM."""
 
-OUTPUT_DIM = 3
+OUTPUT_DIM = 2
 """Số lượng lớp đầu ra (tương ứng với 3 loại cảm xúc: POS, NEG, NEU)."""
 
 N_LAYERS = 2
@@ -44,7 +44,7 @@ MIN_FREQ = 1
 SAVE_DIR = 'saved_model'
 """Thư mục để lưu các file của mô hình (từ điển, trọng số)."""
 
-DATA_FILE = 'datasets/data - data.csv'
+DATA_FILE = 'datasets/data-data.csv'
 """Đường dẫn đến file CSV chứa dữ liệu huấn luyện và kiểm thử."""
 
 VOCAB_PATH = os.path.join(SAVE_DIR, 'vocab.pkl')
@@ -60,7 +60,7 @@ MODEL_SAVE_PATH = os.path.join(SAVE_DIR, 'lstm_model.pth')
 """Đường dẫn lưu file mô hình (sử dụng trong train.py)."""
 
 # --- Cấu hình nhãn ---
-LABEL_MAP = {'POS': 0, 'NEG': 1, 'NEU': 2}
+LABEL_MAP = {'POS': 0, 'NEG': 1}
 """Ánh xạ từ nhãn dạng chuỗi (string) sang nhãn dạng số (integer)."""
 
 LABEL_INV_MAP = {v: k for k, v in LABEL_MAP.items()}
@@ -80,7 +80,6 @@ os.makedirs(RUN_CHECKPOINT_PATH, exist_ok=True)
 SENTIMENT_MAP = {
     "POS": {"label": "Tích cực", "emoji": "😊", "color": "bg-green-100 text-green-800 border-green-400"},
     "NEG": {"label": "Tiêu cực", "emoji": "😠", "color": "bg-red-100 text-red-800 border-red-400"},
-    "NEU": {"label": "Trung tính", "emoji": "😐", "color": "bg-blue-100 text-blue-800 border-blue-400"},
 }
 """Bản đồ ánh xạ nhãn cảm xúc sang nhãn hiển thị, biểu tượng cảm xúc và màu sắc tương ứng."""
 
